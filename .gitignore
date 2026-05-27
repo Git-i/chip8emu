@@ -1,0 +1,9 @@
+# Xmake cache
+.xmake/
+build/
+roms/
+out.ppm
+# MacOS Cache
+.DS_Store
+
+
