@@ -7,10 +7,10 @@ export namespace chip8 {
 struct Machine;
 void execute_instruction(const uint16_t inst, Machine& machine);
 struct Machine {
-    State state;
-    Display display;
+    State state{};
+    Display display{};
 
-    static Machine from_file(const filesystem::path& path) {
+    static auto from_file(const filesystem::path& path) -> Machine {
         Machine out;
         ifstream file{path};
         auto target_buffer = span{
