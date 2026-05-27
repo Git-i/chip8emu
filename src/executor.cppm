@@ -55,10 +55,9 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
                 const auto row = machine.state.ram[machine.state.index + i];
                 for (auto j : views::iota(0u, 8u)) {
                     const auto new_val = static_cast<uint8_t>(row >> (7u - j)) & 0b1;
-                    if (posx + j >= Display::width || posy + i >= Display::height)
-                        machine.display.get_pixels();
+                    if (posx + j >= Display::width || posy + i >= Display::height) continue;
                     if (new_val == 1) {
-                        auto& pixel = pixel_data[posx + j, posy + i];
+                        auto& pixel = pixel_data[posy + i, posx + j];
                         if (pixel)
                             pixel = 0;
                         else pixel = numeric_limits<uint8_t>::max();

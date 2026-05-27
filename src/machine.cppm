@@ -32,8 +32,8 @@ struct Machine {
             execute_instruction(inst, *this);
         }
         ofstream file{"out.ppm", ios::binary};
-        file << std::format("P5\n{} {}\n255\n", Display::height,
-                            Display::width);
+        file << std::format("P5\n{} {}\n255\n", Display::width,
+                            Display::height);
         const auto raw_pixels = display.raw();
         file.write(reinterpret_cast<const char*>(raw_pixels.data()),
                    raw_pixels.size());
