@@ -15,6 +15,8 @@ enum class InstructionGroup : uint32_t {
     alu_nibble = 0x8,
     skip_if_xy_neq = 0x9,
     set_index_nibble = 0xA,
+    jump_with_offset_nibble = 0xB,
+    random_nibble = 0xC,
     draw_nibble = 0xD,
 };
 constexpr InstructionGroup to_instruction(const uint32_t input) {
@@ -129,6 +131,23 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
             }
             else if (fourth_nibble == 5) do_sub(vx, vy);
             else if (fourth_nibble == 7) do_sub(vy, vx);
+            else if (fourth_nibble == 6) {
+                // TODO: consider adding config to support setting vx to vy
+                machine.state.registers[0xF] = vx & 0b1;
+                vx = vx >> 1;
+            }
+            else if (fourth_nibble == 0xE) {
+                machine.state.registers[0xF] = vx & (0b1 << 7);
+                vx = vx << 1;
+            }
+        }
+        break;case jump_with_offset_nibble: {
+            // BNNN
+            machine.state.pc = nnn + machine.state.registers[0x0];
+        }
+        break;case random_nibble: {
+            machine.state.registers[second_nibble] 
+                = nn & machine.state.random_dist(machine.state.random_engine);
         }
         }
     // clang-format on
