@@ -1,10 +1,12 @@
 module;
+#include <wayland-client-protocol.h>
 #include "wayland-client.h"
 #include "fcntl.h"
 #include "sys/mman.h"
 #include "sys/stat.h"
 #include "unistd.h"
 #include "errno.h"
+#include "xdg-shell-client-protocol.h"
 export module wayland_wrapper;
 import std;
 
@@ -12,14 +14,54 @@ template<typename T>
 struct registry_listener_for {
     constexpr static wl_registry_listener data = wl_registry_listener {
         .global = +[](void* data, wl_registry* reg, uint32_t name, const char* itf, uint32_t version) {
-            static_cast<T*>(data)->global(reg, name, std::string_view{itf}, version);
+            static_cast<T*>(data)->registry_global(reg, name, std::string_view{itf}, version);
         },
         .global_remove = +[](void* data, wl_registry* reg, uint32_t name) {
-            static_cast<T*>(data)->global_remove(reg, name);
+            static_cast<T*>(data)->registry_global_remove(reg, name);
+        }
+    };
+};
+template<typename T>
+struct xdg_wm_base_listener_for {
+    constexpr static xdg_wm_base_listener data = xdg_wm_base_listener {
+        .ping = +[](void* data, xdg_wm_base* base, uint32_t serial) {
+            static_cast<T*>(data)->xdg_wm_base_ping(base, serial);
+        }
+    };
+};
+template<typename T>
+struct xdg_surface_listener_for {
+    constexpr static xdg_surface_listener data = xdg_surface_listener {
+        .configure = +[](void* data, xdg_surface* surf, uint32_t serial) {
+            static_cast<T*>(data)->xdg_surface_configure(surf, serial);
+        }
+    };
+};
+template<typename T>
+struct buffer_listener_for {
+    constexpr static wl_buffer_listener data = wl_buffer_listener {
+        .release = +[](void* data, wl_buffer* buffer) {
+            static_cast<T*>(data)->buffer_release(buffer);
+        }
+    };
+};
+template<typename T>
+struct callback_listener_for {
+    constexpr static wl_callback_listener data = wl_callback_listener {
+        .done = +[](void* data, wl_callback* cb, uint32_t time) {
+            static_cast<T*>(data)->callback_done(cb, time);
         }
     };
 };
 
+
+
+void wrap_xdg_wm_base_add_listener(xdg_wm_base* base, const xdg_wm_base_listener* lst, void* data) {
+    xdg_wm_base_add_listener(base, lst, data);
+}
+void wrap_xdg_surface_add_listener(xdg_surface* srf, const xdg_surface_listener* lst, void* data) {
+    xdg_surface_add_listener(srf, lst, data);
+}
 export namespace wayland {
 struct DisplayDeleter {
     static void operator()(wl_display* in) {
@@ -29,9 +71,44 @@ struct DisplayDeleter {
 using DisplayPtr = std::unique_ptr<wl_display, DisplayDeleter>;
 template<typename T>
 concept RegistryListener = requires (T a)  {
-    a.global((wl_registry*){nullptr}, uint32_t{0}, std::string_view{}, uint32_t{0});
-    a.global_remove((wl_registry*){nullptr}, uint32_t{0});
+    a.registry_global((wl_registry*){nullptr}, uint32_t{0}, std::string_view{}, uint32_t{0});
+    a.registry_global_remove((wl_registry*){nullptr}, uint32_t{0});
 };
+template<typename T>
+concept XdgWmBaseListener = requires (T a) {
+    a.xdg_wm_base_ping((xdg_wm_base*){nullptr}, uint32_t{0});
+};
+template<typename T>
+concept XdgSurfaceListener = requires (T a) {
+    a.xdg_surface_configure((xdg_surface*){nullptr}, uint32_t{0});
+};
+template<typename T>
+concept BufferListener = requires (T a) {
+    a.buffer_release((wl_buffer*){nullptr});
+};
+template<typename T>
+concept CallBackListener = requires (T a) { 
+    a.callback_done((wl_callback*){nullptr}, uint32_t{0});
+};
+
+
+template<XdgWmBaseListener T>
+void add_xdg_wm_base_listener(xdg_wm_base* base, T& lst) {
+    wrap_xdg_wm_base_add_listener(base, &xdg_wm_base_listener_for<T>::data, &lst);
+}
+template<XdgSurfaceListener T>
+void add_xdg_surface_listener(xdg_surface* surf, T& lst) {
+    wrap_xdg_surface_add_listener(surf, &xdg_surface_listener_for<T>::data, &lst);
+}
+template<BufferListener T>
+void add_buffer_listener(wl_buffer* buf, T& lst) {
+    wl_buffer_add_listener(buf, &buffer_listener_for<T>::data, &lst);
+}
+template<CallBackListener T>
+void add_callback_listener(wl_callback* cb, T& lst) {
+    wl_callback_add_listener(cb, &callback_listener_for<T>::data, &lst);
+}
+
 class Registry {
     wl_registry* m_ptr;
 public:
