@@ -167,6 +167,6 @@ int main(int argc, char** argv) {
 
     wl_state.initial_draw_callback();
     while (display.dispatch()) { 
-        for(auto _ : views::iota(0u, 30u)) wl_state.chip8_mch.step(); 
+        for(auto _ : views::iota(0u, 1000u)) wl_state.chip8_mch.step(); 
     }
 }

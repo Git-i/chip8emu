@@ -131,8 +131,8 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
             auto& vx = machine.state.registers[second_nibble];
             auto& vy = machine.state.registers[third_nibble];
             auto do_sub = [&vx, &machine](uint8_t first, uint8_t second) {
-                machine.state.registers[0xF] = first > second;
                 vx = first - second;
+                machine.state.registers[0xf] = first >= second;
             };
             if (fourth_nibble == 0) vx = vy;
             else if (fourth_nibble == 1) vx = vx | vy;
@@ -142,18 +142,20 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
                 const auto result = vx + vy;
                 vx = static_cast<uint8_t>(result);
                 // set overflow
-                machine.state.registers[0xF] = std::cmp_greater(result, numeric_limits<uint8_t>::max());
+                machine.state.registers[0xf] = std::cmp_greater(result, numeric_limits<uint8_t>::max());
             }
             else if (fourth_nibble == 5) do_sub(vx, vy);
             else if (fourth_nibble == 7) do_sub(vy, vx);
             else if (fourth_nibble == 6) {
                 // TODO: consider adding config to support setting vx to vy
-                machine.state.registers[0xF] = vx & 0b1;
+                const uint8_t shift_out = vx & 0b1;
                 vx = vx >> 1;
+                machine.state.registers[0xF] = shift_out;
             }
             else if (fourth_nibble == 0xE) {
-                machine.state.registers[0xF] = (vx >> 7) & 0b1;
+                const uint8_t shift_out = (vx >> 7) & 0b1;
                 vx = vx << 1;
+                machine.state.registers[0xF] = shift_out;
             } else println("Unimplemented 8 instruction: {:#X}", inst);
         }
         break;case jump_with_offset_nibble: {
