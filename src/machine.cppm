@@ -9,7 +9,7 @@ void execute_instruction(const uint16_t inst, Machine& machine);
 struct Machine {
     State state{};
     Display display{};
-
+    static constexpr size_t font_offset = 0x50;
     static auto from_file(const filesystem::path& path) -> Machine {
         Machine out;
         ifstream file{path};
@@ -19,7 +19,35 @@ struct Machine {
         file >> stream.rdbuf();
         out.state.pc = 512;
         out.state.index = 0;
+
+        // generate the font at 0x50
+        auto font_data = array<uint8_t, 5 /* bytes per char */ * 16 /* num chars */> {
+            0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+            0x20, 0x60, 0x20, 0x20, 0x70, // 1
+            0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+            0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+            0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+            0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+            0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+            0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+            0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+            0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+            0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+            0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+            0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+            0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+            0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+            0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+        };
+        ranges::copy(font_data, out.state.ram.data() + font_offset);
         return out;
+    }
+    void step() {
+        const auto inst = 
+            (static_cast<std::uint16_t>(state.ram[state.pc]) << 8) |
+            state.ram[state.pc + 1];
+        state.pc += 2;
+        execute_instruction(inst, *this);
     }
     void execute() {
         size_t i = 0;

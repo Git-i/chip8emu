@@ -11,5 +11,7 @@ struct State {
     array<uint8_t, 16> registers{};
     uint16_t index;
     uint16_t pc;
+    uint8_t delay_timer = 0; uint8_t sound_timer = 0;
+    inplace_vector<uint16_t, 10> stack;
 };
 }  // namespace chip8

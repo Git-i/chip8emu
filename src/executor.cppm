@@ -6,7 +6,9 @@ import std;
 using namespace std;
 export namespace chip8 {
 enum class InstructionGroup : uint32_t {
+    zero_nibble = 0x0,
     jump_nibble = 0x1,
+    call_nibble = 0x2,
     skip_if_eq = 0x3,
     skip_if_neq = 0x4,
     skip_if_xy_eq = 0x5,
@@ -18,6 +20,8 @@ enum class InstructionGroup : uint32_t {
     jump_with_offset_nibble = 0xB,
     random_nibble = 0xC,
     draw_nibble = 0xD,
+    // this seems to do many things
+    f_nibble = 0xF
 };
 constexpr InstructionGroup to_instruction(const uint32_t input) {
     return static_cast<InstructionGroup>(input);
@@ -38,13 +42,24 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
     const auto third_nibble = (static_cast<uint32_t>(inst) >> 4u) & 0b1111;
     // last nibble, also know as n
     const auto fourth_nibble = (static_cast<uint32_t>(inst) & 0b1111);
-
+    println("{:#X}", inst);
     // the first nibble of each instruction and what they should do
     // clang-format off
         switch (to_instruction(first_nibble)) {
         using enum InstructionGroup;
         break;case jump_nibble: {
             machine.state.pc = nnn;
+        }
+        break;case call_nibble: {
+            machine.state.stack.push_back(machine.state.pc);
+            machine.state.pc = nnn;
+        }
+        break;case zero_nibble: {
+            if (inst == 0x00EE) {
+                auto back = machine.state.stack.back();
+                machine.state.pc = back;
+                machine.state.stack.pop_back();
+            }
         }
         break;case set_nibble: {
             // 6xnn set register v{x} to nn
@@ -137,7 +152,7 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
                 vx = vx >> 1;
             }
             else if (fourth_nibble == 0xE) {
-                machine.state.registers[0xF] = vx & (0b1 << 7);
+                machine.state.registers[0xF] = (vx >> 7) & 0b1;
                 vx = vx << 1;
             }
         }
@@ -148,6 +163,33 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
         break;case random_nibble: {
             machine.state.registers[second_nibble] 
                 = nn & machine.state.random_dist(machine.state.random_engine);
+        }
+        break;case f_nibble: {
+            auto& vx = machine.state.registers[second_nibble];
+            if (nn == 0x07) vx = machine.state.delay_timer;
+            else if (nn == 0x33) {
+                auto vx_copy = vx;
+                machine.state.ram[machine.state.index + 2] = vx_copy % 10;
+                vx_copy /= 10; machine.state.ram[machine.state.index + 1] = vx_copy % 10;
+                vx_copy /= 10; machine.state.ram[machine.state.index] = vx_copy % 10;
+            } else if (nn == 0x29) {
+                uint8_t char_hex = vx & 0xF;
+                // each char is 5 bytes
+                machine.state.index = Machine::font_offset + (char_hex * 5);
+            } else if (nn == 0x15) {
+                println("15");
+            } else if (nn == 0x55) {
+                println("55");
+                const auto register_range = span{machine.state.registers.data(), second_nibble + 1};
+                ranges::copy(register_range, machine.state.ram.begin() + machine.state.index);
+            } else if (nn == 0x65) {
+                println("65");
+                const auto memory_range = span{machine.state.ram.data() + machine.state.index, second_nibble + 1};
+                ranges::copy(memory_range, machine.state.registers.data());
+            }// else println("f instruction {:#X}", inst);
+        }
+        break;default: {
+            println("Not implemented {}", first_nibble);
         }
         }
     // clang-format on

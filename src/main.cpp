@@ -31,7 +31,6 @@ struct State {
 
     State(const filesystem::path& path)
         : chip8_mch(chip8::Machine::from_file(path)) {
-        chip8_mch.execute();
     }
 
     void registry_global(wl_registry* reg, uint32_t name, string_view interface, uint32_t version) {
@@ -100,7 +99,7 @@ struct State {
         wl_callback_destroy(cb);
         cb = wl_surface_frame(surface);
         wayland::add_callback_listener(cb, *this);
-
+        // chip8_mch.step();
         // write into the offset of the first free buffer
         const auto it = ranges::find(buffers, true, &decltype(buffers)::value_type::second);
         const auto off = ranges::distance(buffers.begin(), it);
@@ -140,7 +139,7 @@ struct State {
 };
 
 int main() {
-    State wl_state(filesystem::path() / "roms" / "ibm.ch8");
+    State wl_state(filesystem::path() / "roms" / "octojam2title.ch8");
     auto display = wayland::Display::connect().value();
     auto registry = display.get_registry();
     registry.add_listener(wl_state);
@@ -151,5 +150,7 @@ int main() {
     wl_surface_commit(wl_state.surface);
 
     wl_state.initial_draw_callback();
-    while (display.dispatch()) {}
+    while (display.dispatch()) { 
+        for(auto _ : views::iota(0u, 30u)) wl_state.chip8_mch.step(); 
+    }
 }
