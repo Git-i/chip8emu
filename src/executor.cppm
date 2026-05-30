@@ -42,7 +42,7 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
     const auto third_nibble = (static_cast<uint32_t>(inst) >> 4u) & 0b1111;
     // last nibble, also know as n
     const auto fourth_nibble = (static_cast<uint32_t>(inst) & 0b1111);
-    println("{:#X}", inst);
+    // println("{:#X}", inst);
     // the first nibble of each instruction and what they should do
     // clang-format off
         switch (to_instruction(first_nibble)) {
@@ -154,7 +154,7 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
             else if (fourth_nibble == 0xE) {
                 machine.state.registers[0xF] = (vx >> 7) & 0b1;
                 vx = vx << 1;
-            }
+            } else println("Unimplemented 8 instruction: {:#X}", inst);
         }
         break;case jump_with_offset_nibble: {
             // BNNN
@@ -179,14 +179,14 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
             } else if (nn == 0x15) {
                 println("15");
             } else if (nn == 0x55) {
-                println("55");
                 const auto register_range = span{machine.state.registers.data(), second_nibble + 1};
                 ranges::copy(register_range, machine.state.ram.begin() + machine.state.index);
             } else if (nn == 0x65) {
-                println("65");
                 const auto memory_range = span{machine.state.ram.data() + machine.state.index, second_nibble + 1};
                 ranges::copy(memory_range, machine.state.registers.data());
-            }// else println("f instruction {:#X}", inst);
+            } else if (nn == 0x1E) {
+                machine.state.index += vx;
+            } else println("f instruction {:#X}", inst);
         }
         break;default: {
             println("Not implemented {}", first_nibble);
