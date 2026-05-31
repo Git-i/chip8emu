@@ -3,6 +3,7 @@ module;
 #include <wayland-client-protocol.h>
 #include "wayland-client.h"
 #include "xdg-shell-client-protocol.h"
+#include "xkbcommon/xkbcommon.h"
 export module app;
 import wayland_wrapper;
 import chip8;
@@ -82,8 +83,11 @@ struct State {
     wl_compositor* compositor = nullptr;
     SurfaceManager surface_mgr;
     wl_seat* seat = nullptr;
-    wl_keyboard* keyboard = nullptr;
 
+    wl_keyboard* keyboard = nullptr;
+    xkb_state* kb_state = nullptr;
+    xkb_keymap* keymap = nullptr;
+    xkb_context* kb_context = nullptr;
 
     State(const filesystem::path& path)
         : chip8_mch(chip8::Machine::from_file(path)),
@@ -120,12 +124,36 @@ struct State {
         bind_global(seat, &wl_seat_interface, 7);
         println("interface: {}, version: {}, name: {}", interface, version, name);
     }
+    void keyboard_enter(wl_keyboard*, uint32_t, wl_surface*, wl_array*) {}
+    void keyboard_leave(wl_keyboard*, uint32_t, wl_surface*) {}
+    void keyboard_keymap(wl_keyboard* kbd, uint32_t format, int32_t fd, uint32_t size) {
+        [[unlikely]] if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+            println(std::cerr, "Keymap format not supported, emulator will function without input");
+            wl_keyboard_destroy(kbd);
+            keyboard = nullptr; return;
+        }
+        auto _ = wayland::UniqueHandle{fd};
+        auto ptr = wayland::MMappedPointer {
+            mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0),
+            size
+        };
+        kb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+        keymap = xkb_keymap_new_from_string(kb_context, ptr.get<char>(), XKB_KEYMAP_FORMAT_TEXT_V1,
+                                            XKB_KEYMAP_COMPILE_NO_FLAGS);
+    }
+    void keyboard_key(wl_keyboard*, uint32_t, uint32_t, uint32_t, wl_keyboard_key_state state) {
+        
+        println("Keybd event {}", state == WL_KEYBOARD_KEY_STATE_PRESSED ? "pressed" : "released");
+    }
+    void keyboard_modifiers(wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
+    void keyboard_repeat_info(wl_keyboard*, int32_t, int32_t) {}
     void seat_capabilities(wl_seat* seat, uint32_t caps) {
         [[unlikely]] if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD)) {
             println(std::cerr, "Keyboard device not found, emulator will function without input");
             return;
         }
         keyboard = wl_seat_get_keyboard(seat);
+        wayland::add_keyboard_listener(keyboard, *this);
     }
     void seat_name(wl_seat*, string_view) {}
     void prepare_input() {

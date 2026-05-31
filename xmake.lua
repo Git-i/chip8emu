@@ -1,5 +1,5 @@
 add_rules("mode.debug", "mode.release")
-add_requires("wayland-client", "wayland-protocols", { system = true })
+add_requires("wayland-client", "wayland-protocols", "xkbcommon", { system = true })
 set_languages("c++26")
 
 target("wayland-xdg-protocol")
@@ -31,4 +31,4 @@ target("chip8")
     add_files("src/*.cppm")
     set_warnings("allextra", "error")
     set_policy("build.c++.modules", true)
-    add_packages("wayland", "wayland-protocols")
+    add_packages("wayland", "wayland-protocols", "xkbcommon")

@@ -46,6 +46,24 @@ constexpr static wl_seat_listener seat_listener_for = wl_seat_listener {
 };
 template<typename T>
 constexpr static wl_keyboard_listener kbd_listener_for = wl_keyboard_listener {
+    .keymap = +[](void* data,wl_keyboard* kbd, uint32_t _0, int32_t _1, uint32_t _2) {
+        static_cast<T*>(data)->keyboard_keymap(kbd, _0, _1, _2);
+    },
+    .enter = +[](void* data, wl_keyboard* kbd, uint32_t num, wl_surface* srf, wl_array* arr) {
+        static_cast<T*>(data)->keyboard_enter(kbd, num, srf, arr);
+    },
+    .leave = +[](void* data, wl_keyboard* kbd, uint32_t _0, wl_surface* srf) {
+        static_cast<T*>(data)->keyboard_leave(kbd, _0, srf);
+    },
+    .key = +[](void* data, wl_keyboard* kbd, uint32_t _0, uint32_t _1, uint32_t _2, uint32_t _3) {
+        static_cast<T*>(data)->keyboard_key(kbd, _0, _1, _2, static_cast<wl_keyboard_key_state>(_3));
+    },
+    .modifiers = +[](void* data, wl_keyboard* kbd, uint32_t _0, uint32_t _1, uint32_t _2, uint32_t _3, uint32_t _4) {
+        static_cast<T*>(data)->keyboard_modifiers(kbd, _0, _1, _2, _3, _4);
+    },
+    .repeat_info = +[](void* data, wl_keyboard* kbd, int32_t _0, int32_t _1) {
+        static_cast<T*>(data)->keyboard_repeat_info(kbd, _0, _1);
+    }
 };
 
 export namespace wayland {
@@ -70,6 +88,15 @@ concept SeatListener = requires(T a) {
     a.seat_capabilities((wl_seat*){nullptr}, uint32_t{0});
     a.seat_name((wl_seat*){nullptr}, std::string_view{});
 };
+template<typename T>
+concept KeyboardListener = requires(T a) {
+    a.keyboard_enter((wl_keyboard*){nullptr}, uint32_t{0}, (wl_surface*){}, (wl_array*){});
+    a.keyboard_keymap((wl_keyboard*){nullptr}, uint32_t{0}, int32_t{0}, uint32_t{0});
+    a.keyboard_leave((wl_keyboard*){nullptr}, uint32_t{0}, (wl_surface*){});
+    a.keyboard_key((wl_keyboard*){nullptr}, uint32_t{0}, uint32_t{0}, uint32_t{0}, WL_KEYBOARD_KEY_STATE_PRESSED);
+    a.keyboard_modifiers((wl_keyboard*){nullptr}, uint32_t{0}, uint32_t{0}, uint32_t{0}, uint32_t{0}, uint32_t{0});
+    a.keyboard_repeat_info((wl_keyboard*){nullptr}, int32_t{0}, int32_t{0});
+};
 
 
 template<XdgWmBaseListener T>
@@ -91,5 +118,9 @@ void add_callback_listener(wl_callback* cb, T& lst) {
 template<SeatListener T>
 void add_seat_listener(wl_seat* st, T& lst) {
     wl_seat_add_listener(st, &seat_listener_for<T>, &lst);
+}
+template<KeyboardListener T>
+void add_keyboard_listener(wl_keyboard* kbd, T& lst) {
+    wl_keyboard_add_listener(kbd, &kbd_listener_for<T>, &lst);
 }
 }
