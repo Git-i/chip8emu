@@ -1,3 +1,5 @@
+module;
+#include <functional>
 export module chip8:machine;
 import :state;
 import :display;
@@ -9,9 +11,13 @@ void execute_instruction(const uint16_t inst, Machine& machine);
 struct Machine {
     State state{};
     Display display{};
+    move_only_function<bool(uint8_t)> is_key_down;
     static constexpr size_t font_offset = 0x50;
-    static auto from_file(const filesystem::path& path) -> Machine {
-        Machine out;
+    static auto from_file(
+        const filesystem::path& path,
+        move_only_function<bool(uint8_t)> is_key_down
+    ) -> Machine {
+        Machine out{.is_key_down = std::move(is_key_down)};
         ifstream file{path};
         auto target_buffer = span{
             reinterpret_cast<char*>(out.state.ram.data()) + 512, 4_kb - 512};
@@ -48,6 +54,10 @@ struct Machine {
             state.ram[state.pc + 1];
         state.pc += 2;
         execute_instruction(inst, *this);
+    }
+    void advance_delay() {
+        if (state.delay_timer != 0)
+            state.delay_timer--;
     }
     void execute() {
         size_t i = 0;

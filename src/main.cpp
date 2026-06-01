@@ -3,7 +3,7 @@ import chip8;
 import wayland_wrapper;
 import app;
 using namespace std;
-
+using namespace std::chrono_literals;
 vector<string_view> read_cmd_args(int argc, char** argv) {
     vector<string_view> result;
     result.reserve(argc);
@@ -23,7 +23,13 @@ int main(int argc, char** argv) {
         return 1;
     }
     app::State wl_state{path};
+    auto timer = chrono::high_resolution_clock::now();
     while (wl_state.dispatch()) { 
-        for(auto _ : views::iota(0u, 30u)) wl_state.chip8_mch.step(); 
+        for(auto _ : views::iota(0u, 10u)) {
+            wl_state.chip8_mch.step(); 
+            auto now = chrono::high_resolution_clock::now();
+            if (now - timer >= 16.6ms)
+                wl_state.chip8_mch.advance_delay();
+        }
     }
 }

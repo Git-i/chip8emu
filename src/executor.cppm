@@ -20,6 +20,7 @@ enum class InstructionGroup : uint32_t {
     jump_with_offset_nibble = 0xB,
     random_nibble = 0xC,
     draw_nibble = 0xD,
+    key_nibble = 0xE,
     // this seems to do many things
     f_nibble = 0xF
 };
@@ -179,7 +180,7 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
                 // each char is 5 bytes
                 machine.state.index = Machine::font_offset + (char_hex * 5);
             } else if (nn == 0x15) {
-                println("15");
+                machine.state.delay_timer = vx;
             } else if (nn == 0x55) {
                 const auto register_range = span{machine.state.registers.data(), second_nibble + 1};
                 ranges::copy(register_range, machine.state.ram.begin() + machine.state.index);
@@ -188,7 +189,19 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
                 ranges::copy(memory_range, machine.state.registers.data());
             } else if (nn == 0x1E) {
                 machine.state.index += vx;
+            } else if (nn == 0x0A) {
+                if (!machine.is_key_down(vx))
+                    machine.state.pc -= 2;
             } else println("f instruction {:#X}", inst);
+        }
+        break;case key_nibble: {
+            const auto vx = machine.state.registers[second_nibble];
+            // println("Attempt for key {:X}", vx);
+            if (
+                (nn == 0x9E && machine.is_key_down(vx)) ||
+                (nn == 0xA1 && !machine.is_key_down(vx))
+            )
+                machine.state.pc += 2;
         }
         break;default: {
             println("Not implemented {}", first_nibble);

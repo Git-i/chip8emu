@@ -88,13 +88,18 @@ struct State {
     xkb_state* kb_state = nullptr;
     xkb_keymap* keymap = nullptr;
     xkb_context* kb_context = nullptr;
+    std::array<bool, 16> is_key_pressed{};
 
     State(const filesystem::path& path)
-        : chip8_mch(chip8::Machine::from_file(path)),
+        : chip8_mch(chip8::Machine::from_file(path, [this](uint8_t key) {
+            [[unlikely]] if (!this->keyboard) return false;
+            return is_key_pressed[key];
+        })),
         display(wayland::Display::connect().value()),
         registry(display.get_registry()),
         surface_mgr{.state = *this}
     {
+        std::ranges::fill(is_key_pressed, false);
         registry.add_listener(*this);
         display.roundtrip();
         surface_mgr.create_surfaces();
@@ -140,12 +145,24 @@ struct State {
         kb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
         keymap = xkb_keymap_new_from_string(kb_context, ptr.get<char>(), XKB_KEYMAP_FORMAT_TEXT_V1,
                                             XKB_KEYMAP_COMPILE_NO_FLAGS);
+        kb_state = xkb_state_new(keymap);
     }
-    void keyboard_key(wl_keyboard*, uint32_t, uint32_t, uint32_t, wl_keyboard_key_state state) {
-        
-        println("Keybd event {}", state == WL_KEYBOARD_KEY_STATE_PRESSED ? "pressed" : "released");
+    void keyboard_key(wl_keyboard*, uint32_t _, uint32_t, uint32_t key, wl_keyboard_key_state state) {
+        const bool is_key_state_pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
+        auto sym = xkb_state_key_get_one_sym(kb_state, key + 8);
+        // TODO: need to present a configurable key map
+        if (sym >= XKB_KEY_a && sym <= XKB_KEY_f) {
+            is_key_pressed[0xA + (sym - XKB_KEY_a)] = is_key_state_pressed;
+        } else if (sym >= XKB_KEY_0 && sym <= XKB_KEY_9) {
+            is_key_pressed[sym - XKB_KEY_0] = is_key_state_pressed;
+        }
     }
-    void keyboard_modifiers(wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
+    void keyboard_modifiers(wl_keyboard*, uint32_t _, 
+                            uint32_t depressed, uint32_t latched,
+                            uint32_t locked, uint32_t group)
+    {
+        xkb_state_update_mask(kb_state, depressed, latched, locked, 0, 0, group);
+    }
     void keyboard_repeat_info(wl_keyboard*, int32_t, int32_t) {}
     void seat_capabilities(wl_seat* seat, uint32_t caps) {
         [[unlikely]] if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD)) {
