@@ -25,11 +25,12 @@ int main(int argc, char** argv) {
     app::State wl_state{path};
     auto timer = chrono::high_resolution_clock::now();
     while (wl_state.dispatch()) { 
-        for(auto _ : views::iota(0u, 10u)) {
+        for(auto _ : views::iota(0u, 20u)) {
             wl_state.chip8_mch.step(); 
             auto now = chrono::high_resolution_clock::now();
-            if (now - timer >= 16.6ms)
+            if (now - timer >= (1s / 60))
                 wl_state.chip8_mch.advance_delay();
+            timer = now;
         }
     }
 }
