@@ -12,7 +12,7 @@ export import :listeners;
 import std;
 
 template<typename T>
-constexpr static wl_registry_listener registry_listener_for = wl_registry_listener {
+constexpr inline wl_registry_listener registry_listener_for = wl_registry_listener {
     .global = +[](void* data, wl_registry* reg, uint32_t name, const char* itf, uint32_t version) {
         static_cast<T*>(data)->registry_global(reg, name, std::string_view{itf}, version);
     },

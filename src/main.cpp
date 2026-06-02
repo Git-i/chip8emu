@@ -5,10 +5,10 @@ import app;
 using namespace std;
 using namespace std::chrono_literals;
 vector<string_view> read_cmd_args(int argc, char** argv) {
-    vector<string_view> result;
-    result.reserve(argc);
-    for (const auto i : views::iota(0, argc))
-        result.emplace_back(argv[i]);
+    vector<string_view> result; result.resize(argc);
+    ranges::generate(result, [val = 0, argv] mutable {
+        return string_view{ argv[val++] };
+    });
     return result;
 }
 int main(int argc, char** argv) {

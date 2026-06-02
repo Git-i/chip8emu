@@ -12,31 +12,31 @@ void wrap_xdg_surface_add_listener(xdg_surface* srf, const xdg_surface_listener*
     xdg_surface_add_listener(srf, lst, data);
 }
 template<typename T>
-constexpr static xdg_wm_base_listener xdg_wm_base_listener_for = xdg_wm_base_listener {
+constexpr inline xdg_wm_base_listener xdg_wm_base_listener_for = xdg_wm_base_listener {
     .ping = +[](void* data, xdg_wm_base* base, uint32_t serial) {
         static_cast<T*>(data)->xdg_wm_base_ping(base, serial);
     }
 };
 template<typename T>
-constexpr static xdg_surface_listener xdg_surface_listener_for = xdg_surface_listener {
+constexpr inline xdg_surface_listener xdg_surface_listener_for = xdg_surface_listener {
     .configure = +[](void* data, xdg_surface* surf, uint32_t serial) {
         static_cast<T*>(data)->xdg_surface_configure(surf, serial);
     }
 };
 template<typename T>
-constexpr static wl_buffer_listener buffer_listener_for = wl_buffer_listener {
+constexpr inline wl_buffer_listener buffer_listener_for = wl_buffer_listener {
     .release = +[](void* data, wl_buffer* buffer) {
         static_cast<T*>(data)->buffer_release(buffer);
     }
 };
 template<typename T>
-constexpr static wl_callback_listener callback_listener_for = wl_callback_listener {
+constexpr inline wl_callback_listener callback_listener_for = wl_callback_listener {
     .done = +[](void* data, wl_callback* cb, uint32_t time) {
         static_cast<T*>(data)->callback_done(cb, time);
     }
 };
 template<typename T>
-constexpr static wl_seat_listener seat_listener_for = wl_seat_listener {
+constexpr inline wl_seat_listener seat_listener_for = wl_seat_listener {
     .capabilities = +[](void* data, wl_seat* seat, uint32_t caps) {
         static_cast<T*>(data)->seat_capabilities(seat, caps);
     },
@@ -45,7 +45,7 @@ constexpr static wl_seat_listener seat_listener_for = wl_seat_listener {
     }
 };
 template<typename T>
-constexpr static wl_keyboard_listener kbd_listener_for = wl_keyboard_listener {
+constexpr inline wl_keyboard_listener kbd_listener_for = wl_keyboard_listener {
     .keymap = +[](void* data,wl_keyboard* kbd, uint32_t _0, int32_t _1, uint32_t _2) {
         static_cast<T*>(data)->keyboard_keymap(kbd, _0, _1, _2);
     },
