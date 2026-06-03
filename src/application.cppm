@@ -147,7 +147,7 @@ struct State {
                                             XKB_KEYMAP_COMPILE_NO_FLAGS);
         kb_state = xkb_state_new(keymap);
     }
-    void keyboard_key(wl_keyboard*, uint32_t _, uint32_t, uint32_t key, wl_keyboard_key_state state) {
+    void keyboard_key(wl_keyboard*, uint32_t, uint32_t, uint32_t key, wl_keyboard_key_state state) {
         const bool is_key_state_pressed = state == WL_KEYBOARD_KEY_STATE_PRESSED;
         auto sym = xkb_state_key_get_one_sym(kb_state, key + 8);
         // TODO: need to present a configurable key map
@@ -157,7 +157,7 @@ struct State {
             is_key_pressed[sym - XKB_KEY_0] = is_key_state_pressed;
         }
     }
-    void keyboard_modifiers(wl_keyboard*, uint32_t _, 
+    void keyboard_modifiers(wl_keyboard*, uint32_t, 
                             uint32_t depressed, uint32_t latched,
                             uint32_t locked, uint32_t group)
     {

@@ -5,6 +5,7 @@ import std;
 
 using namespace std;
 export namespace chip8 {
+
 enum class InstructionGroup : uint32_t {
     zero_nibble = 0x0,
     jump_nibble = 0x1,
@@ -208,5 +209,12 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
         }
         }
     // clang-format on
+}
+void Machine::step() {
+    const auto inst = 
+        (static_cast<std::uint16_t>(state.ram[state.pc]) << 8) |
+        state.ram[state.pc + 1];
+    state.pc += 2;
+    execute_instruction(inst, *this);
 }
 }  // namespace chip8
