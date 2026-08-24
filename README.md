@@ -4,6 +4,11 @@ A fairly simple chip-8 emulator, written in C++26 (whatever parts clang had of i
 using xmake and modules. It uses wayland for display and input so it won't work
 on windows or mac (maybe it'll work on BSD).
 
+## Compile Time Version
+
+There is a branch that runs the emulator fully in consteval and only writes the final image to the filesystem at runtime,
+check it out [https://github.com/Git-i/chip8emu/tree/compile_time](here).
+
 ## Building and running
 
 It requires:
