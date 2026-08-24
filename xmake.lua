@@ -23,10 +23,10 @@ target("wayland-xdg-protocol")
         target:add("files", sourcefile_c)
     end)
 
-
 target("chip8")
     set_kind("binary")
     add_deps("wayland-xdg-protocol")
+    add_cxflags("-freflection", {force = true})
     add_files("src/*.cpp")
     add_files("src/*.cppm")
     set_warnings("allextra", "error")

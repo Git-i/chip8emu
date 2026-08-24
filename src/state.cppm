@@ -3,10 +3,20 @@ import std;
 using namespace std;
 export namespace chip8 {
 constexpr size_t operator""_kb(unsigned long long in) { return in * 1024; }
+struct RandomState {
+    struct RegularRandom {
+        philox4x32 random_engine;
+        uniform_int_distribution<uint32_t> random_dist
+            {0, numeric_limits<uint8_t>::max()};
+    };
+    optional<RegularRandom> random_data;
+    constexpr uint32_t random_number() {
+        if (random_data) return random_data->random_dist(random_data->random_engine);
+        else return 10;
+    }
+};
 struct State {
-    philox4x32 random_engine;
-    uniform_int_distribution<uint32_t> random_dist
-        {0, numeric_limits<uint8_t>::max()};
+    RandomState random_state;
     array<uint8_t, 4_kb> ram;
     array<uint8_t, 16> registers{};
     uint16_t index;

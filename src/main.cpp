@@ -3,34 +3,53 @@ import chip8;
 import wayland_wrapper;
 import app;
 using namespace std;
-using namespace std::chrono_literals;
-vector<string_view> read_cmd_args(int argc, char** argv) {
-    vector<string_view> result; result.resize(argc);
-    ranges::generate(result, [val = 0, argv] mutable {
-        return string_view{ argv[val++] };
-    });
-    return result;
+using namespace app;
+consteval span<const uint32_t> render_game(
+        span<const uint8_t> rom_data,
+        uint32_t width,
+        uint32_t num_steps
+) {
+    auto mch = chip8::Machine::from_rom_bytes(rom_data, +[](uint8_t, void*) { return false; }, nullptr)
+        .value();
+    for (auto _ : views::iota(0u, num_steps)) mch.step();
+    if (width % chip8::Display::width != 0) {
+        throw invalid_argument{"Width must be a multiple of chip8 display width"};
+    }
+    const auto height = width / (chip8::Display::width / chip8::Display::height);
+    // std::vector<uint32_t> target_screen;
+    // target_screen.resize(width * height);
+    auto target_ptr = new uint32_t[width * height];
+    SurfaceManager::blit_frame(
+        mch.display.get_pixels(),
+        mdspan<uint32_t, dextents<uint32_t, 2>>(target_ptr, height, width),
+        0xFFB000, 0x382000
+    );
+    auto ret = define_static_array(span{target_ptr, width * height});
+    delete[] target_ptr;
+    return ret;
 }
-int main(int argc, char** argv) {
-    auto args = read_cmd_args(argc, argv);
-    if (args.size() != 2) {
-        println("Usage: {} [path to rom]", args[0]);
-        return 1;
-    }
-    const auto path = filesystem::path(args[1]);
-    if (!filesystem::exists(path)) {
-        println("The file {} does not exist", path);
-        return 1;
-    }
-    app::State wl_state{path};
-    auto timer = chrono::high_resolution_clock::now();
-    while (wl_state.dispatch()) { 
-        for(auto _ : views::iota(0u, 20u)) {
-            wl_state.chip8_mch.step(); 
-            auto now = chrono::high_resolution_clock::now();
-            if (now - timer >= (1s / 60))
-                wl_state.chip8_mch.advance_delay();
-            timer = now;
-        }
-    }
+int main() { 
+    constexpr uint8_t rom_data[] {
+        #embed "../roms/ibm.ch8"
+    };
+    constexpr uint32_t output_width = 128;
+    constexpr uint32_t output_height = output_width / 2;
+    constexpr auto game_data = render_game(span{rom_data}, output_width, 70);
+    std::cout << game_data.size() << std::endl;
+    // Yes I'm aware its not optimal
+    ofstream out_file("output_image.ppm", ios::binary);
+    out_file << "P6\n" << output_width << " " << output_height << "\n255\n";
+    ranges::copy(
+        game_data
+        | views::transform([](uint32_t input) {
+            return std::array<uint8_t, 3>{
+                static_cast<uint8_t>((input >> 16) & 0xFF),
+                static_cast<uint8_t>((input >> 8)  & 0xFF),
+                static_cast<uint8_t>(input & 0xFF)
+            };
+        })
+        | views::join,
+        ostreambuf_iterator<char>(out_file)
+    );
+    
 }

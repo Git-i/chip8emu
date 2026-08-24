@@ -13,10 +13,10 @@ private:
     array<uint8_t, width * height> pixels{};
 
 public:
-    void clear_screen() { ranges::fill(pixels, 0); }
-    auto get_pixels() -> mdspan<uint8_t, Extents> {
+    constexpr void clear_screen() { ranges::fill(pixels, 0); }
+    constexpr auto get_pixels() -> mdspan<uint8_t, Extents> {
         return mdspan(pixels.data(), Extents());
     }
-    auto raw() -> span<uint8_t, width * height> { return pixels; }
+    constexpr auto raw() -> span<uint8_t, width * height> { return pixels; }
 };
 }  // namespace chip8

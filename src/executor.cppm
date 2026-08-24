@@ -28,7 +28,7 @@ enum class InstructionGroup : uint32_t {
 constexpr InstructionGroup to_instruction(const uint32_t input) {
     return static_cast<InstructionGroup>(input);
 }
-void execute_instruction(const uint16_t inst, Machine& machine) {
+constexpr void execute_instruction(const uint16_t inst, Machine& machine) {
     const auto first_nibble = (static_cast<uint32_t>(inst) >> 12u) & 0b1111;
     if (inst == 0x00E0) {
         machine.display.clear_screen();
@@ -166,7 +166,7 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
         }
         break;case random_nibble: {
             machine.state.registers[second_nibble] 
-                = nn & machine.state.random_dist(machine.state.random_engine);
+                = nn & machine.state.random_state.random_number();
         }
         break;case f_nibble: {
             auto& vx = machine.state.registers[second_nibble];
@@ -191,7 +191,7 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
             } else if (nn == 0x1E) {
                 machine.state.index += vx;
             } else if (nn == 0x0A) {
-                if (!machine.is_key_down(vx))
+                if (!machine.is_key_down(vx, machine.callback_data))
                     machine.state.pc -= 2;
             } else println("f instruction {:#X}", inst);
         }
@@ -199,8 +199,8 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
             const auto vx = machine.state.registers[second_nibble];
             // println("Attempt for key {:X}", vx);
             if (
-                (nn == 0x9E && machine.is_key_down(vx)) ||
-                (nn == 0xA1 && !machine.is_key_down(vx))
+                (nn == 0x9E && machine.is_key_down(vx, machine.callback_data)) ||
+                (nn == 0xA1 && !machine.is_key_down(vx, machine.callback_data))
             )
                 machine.state.pc += 2;
         }
@@ -210,7 +210,7 @@ void execute_instruction(const uint16_t inst, Machine& machine) {
         }
     // clang-format on
 }
-void Machine::step() {
+constexpr void Machine::step() {
     const auto inst = 
         (static_cast<std::uint16_t>(state.ram[state.pc]) << 8) |
         state.ram[state.pc + 1];

@@ -49,12 +49,11 @@ struct SurfaceManager {
     constexpr auto get_pool_size() const -> size_t {
         return display_width() * display_height() * bpp * 2;
     }
-    void blit_frame(const mdspan<uint8_t, chip8::Display::Extents> src, mdspan<uint32_t, dextents<uint32_t, 2>> dst) {
-        const auto r8_to_color = [](uint8_t in) -> uint32_t {
-            const uint32_t as_u32 = in;
-            return 
-            as_u32 | (as_u32 << 8) | (as_u32 << 16);
+    static constexpr void blit_frame(const mdspan<uint8_t, chip8::Display::Extents> src, mdspan<uint32_t, dextents<uint32_t, 2>> dst, uint32_t fg, uint32_t bg) {
+        const auto r8_to_color = [fg, bg](uint8_t in) -> uint32_t {
+            return in == 0 ? bg : fg;
         };
+        const auto display_scale = dst.extent(0) / src.extent(0);
         // copy src into dst with nearest neighbor filtering
         for (const auto i : views::iota(0u, src.extent(0))) {
             for (const auto j : views::iota(0u, src.extent(1))) {
@@ -91,10 +90,11 @@ struct State {
     std::array<bool, 16> is_key_pressed{};
 
     State(const filesystem::path& path)
-        : chip8_mch(chip8::Machine::from_file(path, [this](uint8_t key) {
-            [[unlikely]] if (!this->keyboard) return false;
-            return is_key_pressed[key];
-        })),
+        : chip8_mch(chip8::Machine::from_file(path, +[](uint8_t key, void* data) {
+            auto* self = static_cast<State*>(data);
+            [[unlikely]] if (!self->keyboard) return false;
+            return self->is_key_pressed[key];
+        }, this)),
         display(wayland::Display::connect().value()),
         registry(display.get_registry()),
         surface_mgr{.state = *this}
@@ -234,7 +234,8 @@ void SurfaceManager::callback_done(wl_callback* cb, uint32_t) {
     auto dst_pointer = reinterpret_cast<uint32_t*>(shm_pool_ptr.get<std::byte>() + (off * shm_pool_size / 2));
     blit_frame(
             state.chip8_mch.display.get_pixels(), 
-            mdspan<uint32_t, dextents<uint32_t, 2>>(dst_pointer, display_height(), display_width()));
+            mdspan<uint32_t, dextents<uint32_t, 2>>(dst_pointer, display_height(), display_width()),
+            1,0 );
     wl_surface_attach(surface, it->first, 0, 0);
     wl_surface_damage_buffer(surface, 0, 0, INT32_MAX, INT32_MAX);
     wl_surface_commit(surface);
